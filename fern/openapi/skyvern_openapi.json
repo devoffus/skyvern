@@ -78,6 +78,8 @@
                     "mapping": {
                       "task_v1": "#/components/schemas/TaskRunResponse",
                       "task_v2": "#/components/schemas/TaskRunResponse",
+                      "openai_cua": "#/components/schemas/TaskRunResponse",
+                      "anthropic_cua": "#/components/schemas/TaskRunResponse",
                       "workflow_run": "#/components/schemas/WorkflowRunResponse"
                     }
                   },
@@ -780,9 +782,7 @@
                             "type": "object"
                           },
                           {
-                            "items": {
-
-                            },
+                            "items": {},
                             "type": "array"
                           },
                           {
@@ -1388,6 +1388,10 @@
                         "title": "Title",
                         "type": "string"
                       },
+                      "engine": {
+                        "$ref": "#/$defs/RunEngine",
+                        "default": "skyvern-1.0"
+                      },
                       "error_code_mapping": {
                         "anyOf": [
                           {
@@ -1501,6 +1505,11 @@
                         "default": true,
                         "title": "Complete Verification",
                         "type": "boolean"
+                      },
+                      "include_action_history_in_verification": {
+                        "default": false,
+                        "title": "Include Action History In Verification",
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -1603,6 +1612,16 @@
                       "NONE"
                     ],
                     "title": "ProxyLocation",
+                    "type": "string"
+                  },
+                  "RunEngine": {
+                    "enum": [
+                      "skyvern-1.0",
+                      "skyvern-2.0",
+                      "openai-cua",
+                      "anthropic-cua"
+                    ],
+                    "title": "RunEngine",
                     "type": "string"
                   },
                   "SendEmailBlockYAML": {
@@ -1748,9 +1767,7 @@
                             "type": "object"
                           },
                           {
-                            "items": {
-
-                            },
+                            "items": {},
                             "type": "array"
                           },
                           {
@@ -1871,6 +1888,11 @@
                       "complete_verification": {
                         "default": true,
                         "title": "Complete Verification",
+                        "type": "boolean"
+                      },
+                      "include_action_history_in_verification": {
+                        "default": false,
+                        "title": "Include Action History In Verification",
                         "type": "boolean"
                       }
                     },
@@ -2381,9 +2403,7 @@
                             "type": "object"
                           },
                           {
-                            "items": {
-
-                            },
+                            "items": {},
                             "type": "array"
                           },
                           {
@@ -2558,9 +2578,7 @@
             "description": "Successfully deleted workflow",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -2857,9 +2875,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -2940,11 +2956,11 @@
               }
             }
           },
-          "404": {
-            "description": "Browser session not found"
-          },
           "401": {
             "description": "Unauthorized - Invalid or missing authentication"
+          },
+          "404": {
+            "description": "Browser session not found"
           },
           "422": {
             "description": "Validation Error",
@@ -3076,6 +3092,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBrowserSessionRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successfully created browser session",
@@ -3161,9 +3187,7 @@
             "description": "Successfully closed browser session",
             "content": {
               "application/json": {
-                "schema": {
-
-                }
+                "schema": {}
               }
             }
           },
@@ -3183,6 +3207,438 @@
         },
         "x-fern-sdk-group-name": "browser_session",
         "x-fern-sdk-method-name": "close_browser_session"
+      }
+    },
+    "/v1/credentials/totp": {
+      "post": {
+        "tags": [
+          "Credentials"
+        ],
+        "summary": "Forward TOTP (2FA, MFA) code to Skyvern",
+        "description": "Forward a TOTP (2FA, MFA) code to Skyvern",
+        "operationId": "send_totp_code_v1_credentials_totp_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TOTPCodeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TOTPCode"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-fern-sdk-group-name": "credentials",
+        "x-fern-sdk-method-name": "send_totp_code"
+      }
+    },
+    "/v1/credentials": {
+      "get": {
+        "tags": [
+          "Credentials"
+        ],
+        "summary": "Get all credentials",
+        "description": "Retrieves a paginated list of credentials for the current organization",
+        "operationId": "get_credentials_v1_credentials_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number for pagination",
+              "openapi_extra": {
+                "x-fern-sdk-parameter-name": "page"
+              },
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number for pagination",
+            "example": 1
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of items per page",
+              "openapi_extra": {
+                "x-fern-sdk-parameter-name": "page_size"
+              },
+              "default": 10,
+              "title": "Page Size"
+            },
+            "description": "Number of items per page",
+            "example": 10
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialResponse"
+                  },
+                  "title": "Response Get Credentials V1 Credentials Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-fern-sdk-group-name": "credentials",
+        "x-fern-sdk-method-name": "get_credentials"
+      },
+      "post": {
+        "tags": [
+          "Credentials"
+        ],
+        "summary": "Create credential",
+        "description": "Creates a new credential for the current organization",
+        "operationId": "create_credential_v1_credentials_post",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCredentialRequest",
+                "description": "The credential data to create",
+                "openapi_extra": {
+                  "x-fern-sdk-parameter-name": "data"
+                }
+              },
+              "example": {
+                "name": "My Credential",
+                "credential_type": "PASSWORD",
+                "credential": {
+                  "username": "user@example.com",
+                  "password": "securepassword123",
+                  "totp": "JBSWY3DPEHPK3PXP"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-fern-sdk-group-name": "credentials",
+        "x-fern-sdk-method-name": "create_credential"
+      }
+    },
+    "/v1/credentials/{credential_id}": {
+      "get": {
+        "tags": [
+          "Credentials"
+        ],
+        "summary": "Get credential by ID",
+        "description": "Retrieves a specific credential by its ID",
+        "operationId": "get_credential_v1_credentials__credential_id__get",
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The unique identifier of the credential",
+              "openapi_extra": {
+                "x-fern-sdk-parameter-name": "credential_id"
+              },
+              "title": "Credential Id"
+            },
+            "description": "The unique identifier of the credential",
+            "example": "cred_1234567890"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-fern-sdk-group-name": "credentials",
+        "x-fern-sdk-method-name": "get_credential"
+      }
+    },
+    "/v1/credentials/{credential_id}/delete": {
+      "post": {
+        "tags": [
+          "Credentials"
+        ],
+        "summary": "Delete credential",
+        "description": "Deletes a specific credential by its ID",
+        "operationId": "delete_credential_v1_credentials__credential_id__delete_post",
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The unique identifier of the credential to delete",
+              "openapi_extra": {
+                "x-fern-sdk-parameter-name": "credential_id"
+              },
+              "title": "Credential Id"
+            },
+            "description": "The unique identifier of the credential to delete",
+            "example": "cred_1234567890"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-fern-sdk-group-name": "credentials",
+        "x-fern-sdk-method-name": "delete_credential"
       }
     }
   },
@@ -3298,6 +3754,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -3349,9 +3809,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -3483,6 +3941,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -3826,11 +4289,49 @@
             "title": "Runnable Id",
             "description": "ID of the associated runnable"
           },
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout",
+            "description": "Timeout in minutes for the session. Timeout is applied after the session is started."
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At",
+            "description": "Timestamp when the session was started"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At",
+            "description": "Timestamp when the session was completed"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "title": "Created At",
-            "description": "Timestamp when the session was created"
+            "description": "Timestamp when the session was created (the timestamp for the initial request)"
           },
           "modified_at": {
             "type": "string",
@@ -4012,9 +4513,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -4030,6 +4529,69 @@
           "source"
         ],
         "title": "ContextParameter"
+      },
+      "CreateBrowserSessionRequest": {
+        "properties": {
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10080,
+                "minimum": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout",
+            "description": "Timeout in minutes for the session. Timeout is applied after the session is started. Must be between 5 and 10080. Defaults to 60.",
+            "default": 60
+          }
+        },
+        "type": "object",
+        "title": "CreateBrowserSessionRequest"
+      },
+      "CreateCredentialRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of the credential",
+            "examples": [
+              "My Credential"
+            ]
+          },
+          "credential_type": {
+            "$ref": "#/components/schemas/CredentialType",
+            "description": "Type of credential to create"
+          },
+          "credential": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NonEmptyPasswordCredential"
+              },
+              {
+                "$ref": "#/components/schemas/NonEmptyCreditCardCredential"
+              }
+            ],
+            "title": "Credential",
+            "description": "The credential data to store",
+            "examples": [
+              {
+                "password": "securepassword123",
+                "username": "user@example.com"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "credential_type",
+          "credential"
+        ],
+        "title": "CreateCredentialRequest",
+        "description": "Request model for creating a new credential."
       },
       "CredentialParameter": {
         "properties": {
@@ -4099,6 +4661,87 @@
           "modified_at"
         ],
         "title": "CredentialParameter"
+      },
+      "CredentialResponse": {
+        "properties": {
+          "credential_id": {
+            "type": "string",
+            "title": "Credential Id",
+            "description": "Unique identifier for the credential",
+            "examples": [
+              "cred_1234567890"
+            ]
+          },
+          "credential": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PasswordCredentialResponse"
+              },
+              {
+                "$ref": "#/components/schemas/CreditCardCredentialResponse"
+              }
+            ],
+            "title": "Credential",
+            "description": "The credential data"
+          },
+          "credential_type": {
+            "$ref": "#/components/schemas/CredentialType",
+            "description": "Type of the credential"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of the credential",
+            "examples": [
+              "My Credential"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "credential_id",
+          "credential",
+          "credential_type",
+          "name"
+        ],
+        "title": "CredentialResponse",
+        "description": "Response model for credential operations."
+      },
+      "CredentialType": {
+        "type": "string",
+        "enum": [
+          "password",
+          "credit_card"
+        ],
+        "title": "CredentialType",
+        "description": "Type of credential stored in the system."
+      },
+      "CreditCardCredentialResponse": {
+        "properties": {
+          "last_four": {
+            "type": "string",
+            "title": "Last Four",
+            "description": "Last four digits of the credit card number",
+            "examples": [
+              "1234"
+            ]
+          },
+          "brand": {
+            "type": "string",
+            "title": "Brand",
+            "description": "Brand of the credit card",
+            "examples": [
+              "visa"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "last_four",
+          "brand"
+        ],
+        "title": "CreditCardCredentialResponse",
+        "description": "Response model for credit card credentials, containing only the last four digits and brand."
       },
       "DownloadToS3Block": {
         "properties": {
@@ -4174,6 +4817,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -4218,9 +4865,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -4352,6 +4997,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -4403,6 +5053,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -4454,9 +5108,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -4588,6 +5240,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -5011,6 +5668,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -5062,9 +5723,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -5196,6 +5855,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -5246,6 +5910,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -5290,9 +5958,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -5424,6 +6090,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -5433,6 +6104,119 @@
           "navigation_goal"
         ],
         "title": "NavigationBlock"
+      },
+      "NonEmptyCreditCardCredential": {
+        "properties": {
+          "card_number": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Number",
+            "description": "The full credit card number (must not be empty)",
+            "examples": [
+              "4111111111111111"
+            ]
+          },
+          "card_cvv": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Cvv",
+            "description": "The card's CVV (must not be empty)",
+            "examples": [
+              "123"
+            ]
+          },
+          "card_exp_month": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Exp Month",
+            "description": "The card's expiration month (must not be empty)",
+            "examples": [
+              "12"
+            ]
+          },
+          "card_exp_year": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Exp Year",
+            "description": "The card's expiration year (must not be empty)",
+            "examples": [
+              "2025"
+            ]
+          },
+          "card_brand": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Brand",
+            "description": "The card's brand (must not be empty)",
+            "examples": [
+              "visa"
+            ]
+          },
+          "card_holder_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Card Holder Name",
+            "description": "The name of the card holder (must not be empty)",
+            "examples": [
+              "John Doe"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "card_number",
+          "card_cvv",
+          "card_exp_month",
+          "card_exp_year",
+          "card_brand",
+          "card_holder_name"
+        ],
+        "title": "NonEmptyCreditCardCredential",
+        "description": "Credit card credential model that requires non-empty values."
+      },
+      "NonEmptyPasswordCredential": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Password",
+            "description": "The password value (must not be empty)",
+            "examples": [
+              "securepassword123"
+            ]
+          },
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Username",
+            "description": "The username associated with the credential (must not be empty)",
+            "examples": [
+              "user@example.com"
+            ]
+          },
+          "totp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Totp",
+            "description": "Optional TOTP (Time-based One-Time Password) string used to generate 2FA codes",
+            "examples": [
+              "JBSWY3DPEHPK3PXP"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "password",
+          "username"
+        ],
+        "title": "NonEmptyPasswordCredential",
+        "description": "Password credential model that requires non-empty values."
       },
       "OutputParameter": {
         "properties": {
@@ -5543,6 +6327,24 @@
         ],
         "title": "PDFParserBlock"
       },
+      "PasswordCredentialResponse": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "The username associated with the credential",
+            "examples": [
+              "user@example.com"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "username"
+        ],
+        "title": "PasswordCredentialResponse",
+        "description": "Response model for password credentials, containing only the username."
+      },
       "ProxyLocation": {
         "type": "string",
         "enum": [
@@ -5572,7 +6374,8 @@
         "enum": [
           "skyvern-1.0",
           "skyvern-2.0",
-          "openai-cua"
+          "openai-cua",
+          "anthropic-cua"
         ],
         "title": "RunEngine"
       },
@@ -5665,6 +6468,250 @@
         ],
         "title": "SendEmailBlock"
       },
+      "TOTPCode": {
+        "properties": {
+          "totp_identifier": {
+            "type": "string",
+            "title": "Totp Identifier",
+            "description": "The identifier of the TOTP code. It can be the email address, phone number, or the identifier of the user.",
+            "examples": [
+              "john.doe@example.com",
+              "4155555555",
+              "user_123"
+            ]
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id",
+            "description": "The task_id the totp code is for. It can be the task_id of the task that the TOTP code is for.",
+            "examples": [
+              "task_123456"
+            ]
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id",
+            "description": "The workflow ID the TOTP code is for. It can be the workflow ID of the workflow that the TOTP code is for.",
+            "examples": [
+              "wpid_123456"
+            ]
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id",
+            "description": "The workflow run id that the TOTP code is for. It can be the workflow run id of the workflow run that the TOTP code is for.",
+            "examples": [
+              "wr_123456"
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "An optional field. The source of the TOTP code. e.g. email, sms, etc.",
+            "examples": [
+              "email",
+              "sms",
+              "app"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "The content of the TOTP code. It can be the email content that contains the TOTP code, or the sms message that contains the TOTP code. Skyvern will automatically extract the TOTP code from the content.",
+            "examples": [
+              "Hello, your verification code is 123456"
+            ]
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At",
+            "description": "The timestamp when the TOTP code expires",
+            "examples": [
+              "2025-01-01T00:00:00Z"
+            ]
+          },
+          "totp_code_id": {
+            "type": "string",
+            "title": "Totp Code Id",
+            "description": "The skyvern ID of the TOTP code."
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "The TOTP code extracted from the content."
+          },
+          "organization_id": {
+            "type": "string",
+            "title": "Organization Id",
+            "description": "The ID of the organization that the TOTP code is for."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "The timestamp when the TOTP code was created."
+          },
+          "modified_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Modified At",
+            "description": "The timestamp when the TOTP code was modified."
+          }
+        },
+        "type": "object",
+        "required": [
+          "totp_identifier",
+          "content",
+          "totp_code_id",
+          "code",
+          "organization_id",
+          "created_at",
+          "modified_at"
+        ],
+        "title": "TOTPCode"
+      },
+      "TOTPCodeCreate": {
+        "properties": {
+          "totp_identifier": {
+            "type": "string",
+            "title": "Totp Identifier",
+            "description": "The identifier of the TOTP code. It can be the email address, phone number, or the identifier of the user.",
+            "examples": [
+              "john.doe@example.com",
+              "4155555555",
+              "user_123"
+            ]
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id",
+            "description": "The task_id the totp code is for. It can be the task_id of the task that the TOTP code is for.",
+            "examples": [
+              "task_123456"
+            ]
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id",
+            "description": "The workflow ID the TOTP code is for. It can be the workflow ID of the workflow that the TOTP code is for.",
+            "examples": [
+              "wpid_123456"
+            ]
+          },
+          "workflow_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Run Id",
+            "description": "The workflow run id that the TOTP code is for. It can be the workflow run id of the workflow run that the TOTP code is for.",
+            "examples": [
+              "wr_123456"
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "An optional field. The source of the TOTP code. e.g. email, sms, etc.",
+            "examples": [
+              "email",
+              "sms",
+              "app"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "The content of the TOTP code. It can be the email content that contains the TOTP code, or the sms message that contains the TOTP code. Skyvern will automatically extract the TOTP code from the content.",
+            "examples": [
+              "Hello, your verification code is 123456"
+            ]
+          },
+          "expired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expired At",
+            "description": "The timestamp when the TOTP code expires",
+            "examples": [
+              "2025-01-01T00:00:00Z"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "totp_identifier",
+          "content"
+        ],
+        "title": "TOTPCodeCreate"
+      },
       "TaskBlock": {
         "properties": {
           "label": {
@@ -5705,6 +6752,10 @@
             "type": "string",
             "title": "Title",
             "default": ""
+          },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
           },
           "complete_criterion": {
             "anyOf": [
@@ -5757,9 +6808,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -5891,6 +6940,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -5955,9 +7009,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -6050,6 +7102,12 @@
             "title": "Publish Workflow",
             "description": "Whether to publish this task as a reusable workflow. ",
             "default": false
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "description": "Whether to include action history when verifying that the task is complete",
+            "default": false
           }
         },
         "type": "object",
@@ -6076,9 +7134,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -6142,14 +7198,28 @@
             "title": "Modified At",
             "description": "Timestamp when this run was last modified"
           },
+          "app_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Url",
+            "description": "URL to the application UI where the run can be viewed"
+          },
           "run_type": {
             "type": "string",
             "enum": [
               "task_v1",
-              "task_v2"
+              "task_v2",
+              "openai_cua",
+              "anthropic_cua"
             ],
             "title": "Run Type",
-            "description": "Type of task run - either task_v1 or task_v2"
+            "description": "Types of a task run - task_v1, task_v2, openai_cua, anthropic_cua"
           },
           "run_request": {
             "anyOf": [
@@ -6272,7 +7342,7 @@
           "llm_key": {
             "type": "string",
             "title": "Llm Key",
-            "default": "AZURE_OPENAI"
+            "default": "AZURE_OPENAI_GPT4_1"
           },
           "prompt": {
             "type": "string",
@@ -6418,6 +7488,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -6469,9 +7543,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -6603,6 +7675,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -6654,6 +7731,10 @@
             "title": "Title",
             "default": ""
           },
+          "engine": {
+            "$ref": "#/components/schemas/RunEngine",
+            "default": "skyvern-1.0"
+          },
           "complete_criterion": {
             "anyOf": [
               {
@@ -6705,9 +7786,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -6839,6 +7918,11 @@
             "type": "boolean",
             "title": "Complete Verification",
             "default": true
+          },
+          "include_action_history_in_verification": {
+            "type": "boolean",
+            "title": "Include Action History In Verification",
+            "default": false
           }
         },
         "type": "object",
@@ -7286,9 +8370,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -7368,9 +8450,7 @@
             "type": "object",
             "title": "Parameters",
             "description": "Parameters to pass to the workflow",
-            "default": {
-
-            }
+            "default": {}
           },
           "proxy_location": {
             "$ref": "#/components/schemas/ProxyLocation",
@@ -7450,9 +8530,7 @@
                 "type": "object"
               },
               {
-                "items": {
-
-                },
+                "items": {},
                 "type": "array"
               },
               {
@@ -7515,6 +8593,18 @@
             "format": "date-time",
             "title": "Modified At",
             "description": "Timestamp when this run was last modified"
+          },
+          "app_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Url",
+            "description": "URL to the application UI where the run can be viewed"
           },
           "run_type": {
             "type": "string",
